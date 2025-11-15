@@ -1,55 +1,65 @@
-class User:
-    def __init__(self, first_name, last_name):
-        self.first_name = first_name
-        self.last_name = last_name
+import pandas as pd
+
+df_cars = pd.read_csv("cars.csv", dtype={"id": str})
+
 
 class Car:
-    def __init__(self, car_id ,model, year, price):
+    def __init__(self, car_id):
         self.car_id = car_id
-        self.model = model
-        self.year = year
-        self.price = price
+        car_data = df_cars.loc[df_cars["id"] == self.car_id]
+        if car_data.empty:
+            raise ValueError(f"Car with ID {car_id} not found!")
 
-class Rental:
-    def __init__(self, rental_id, user, car, rental_price):
-        self.user = user
-        self.car = car
-        self.rental_id = rental_id
-        self.rental_price = rental_price
+        self.make = car_data["make"].squeeze()
+        self.model = car_data["model"].squeeze()
+        self.year = car_data["year"].squeeze()
+        self.available_status = car_data["available"].squeeze()
 
-    def generate_confirmation(self):
-        print(f"Створення підтвердження оренди №{self.rental_id}.")
-        print(f"Користувач: {self.user.first_name} {self.user.last_name}")
-        print(f"Автомобіль: {self.car.model} {self.car.year}")
-        print(f"Ціна оренди: {self.rental_price} грн")
+    def available(self):
+        return self.available_status == "yes"
 
-    def end_rental(self):
-        print(f"Завершення оренди №{self.rental_id}.")
+    def book(self):
+        df_cars.loc[df_cars["id"] == self.car_id, "available"] = "no"
+        df_cars.to_csv("cars.csv", index=False)
+        self.available_status = "no"
 
-class CarRentalSystem:
-    def __init__(self, cars):
-        self.cars = cars
+class RentalTicket:
+    def __init__(self, customer_name, car_obj):
+        self.customer_name = customer_name
+        self.car_obj = car_obj
 
-    def view_available_cars(self):
-        print("Доступні авто:")
-        for car in self.cars:
-            print(f"{car.car_id}. {car.model} {car.year} — {car.price} грн")
+    def generate(self):
+        ticket = f"""
+        ---- RENTAL CONFIRMATION ----
+        Customer: {self.customer_name}
+        Car: {self.car_obj.make} {self.car_obj.model} ({self.car_obj.year})
+        Car ID: {self.car_obj.car_id}
+        Thank you for renting with us!
+        -----------------------------------
+        """
+        return ticket
 
-    def book_car(self, user, car):
-        print(f"{user.first_name} бронює {car.model}")
-        return Rental(1, user, car, car.price)
+def main():
+    print("Available cars:")
+    print(df_cars)
+
+    customer_name = input("Enter your name: ")
+
+    car_id = input("Enter the ID of the car you want to rent: ")
+
+    car = Car(car_id)
+
+    if car.available():
+        print(f"{car.make} {car.model} is available. Booking now...")
+
+        car.book()
+
+        ticket = RentalTicket(customer_name, car)
+        print(ticket.generate())
+
+    else:
+        print("Sorry, this car is NOT available.")
 
 
-
-
-user1 = User("Vadim", "Derish")
-car1 = Car(1, "Renault", 2020, 5000)
-car2 = Car(2, "Toyota", 2019, 3000)
-
-system = CarRentalSystem([car1, car2])
-
-system.view_available_cars()
-rental = system.book_car(user1, car1)
-
-rental.generate_confirmation()
-rental.end_rental()
+if __name__ == "__main__":
+    main()
